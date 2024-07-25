@@ -3,3 +3,4 @@ glob
 pdfplumber
 pandas
 pathlib
+openpyxl
