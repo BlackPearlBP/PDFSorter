@@ -1,28 +1,47 @@
-import glob
-import pandas
-import pdfplumber
+import easyocr
 import os
+import pathlib
+import pandas as pd
+import logging
 
-# reader = PdfReader(r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBPC\01_01_0000002031_001_0000.pdf")
-# print(len(reader.pages))
-# page = reader.pages[0]
-# print(page.extract_text())
+CONVERTED_DIR = r"converted_pdfs"
+RESULTS_DIR = r"results"
+LOG_FILE = r"ocr_log.txt"
 
-array_pdfs = (glob.glob(r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBPC\*.pdf"))
+logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
 
-#output = r"C:\Users\OLB5JVL\Desktop\Leitor PDF\results"
+def convert_to_excel(file: str, text: list) -> None:
+    if not text:
+        logging.info(f"Skipping empty file {file}")
+        return
 
-for file in array_pdfs:
-    with pdfplumber.open(file) as pdf:
-        page = pdf.pages[0]
-        data = page.extract_table()
-        file_name = data[43:48]
-        output = r"C:\Users\OLB5JVL\Desktop\Leitor PDF\results\{file_name}.xlsx".format(file_name)
-        #os.rename(file, file_name)
-        df = pandas.DataFrame(data=data)
-        df.to_excel(output)
+    file_name = os.path.splitext(os.path.basename(file))[0]
+    suffix = ".xlsx"
+    output = pathlib.Path(RESULTS_DIR).joinpath(file_name).with_suffix(suffix)
 
-# pdf = pdfplumber.open(r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBPC\01_01_0000002031_001_0000.pdf")
-# page = pdf.pages[0]
-# tables = page.extract_table()
-#pdf_data = tables[0:]
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
+
+    df = pd.DataFrame([item] for item in text)
+    df.to_excel(output)
+
+def main():
+    reader = easyocr.Reader(['en', 'es'])
+
+    for file in os.listdir(CONVERTED_DIR):
+        if file.endswith(".jpg"):
+            try:
+                file_path = os.path.join(CONVERTED_DIR, file)
+                if not os.path.isfile(file_path):
+                    logging.warning(f"Skipping non-file {file_path}")
+                    continue
+                text = reader.readtext(file_path, detail=0, width_ths=1.5, height_ths=1)
+                logging.info(f"Extracted text from {file}: {text}")
+                convert_to_excel(file, text)
+            except easyocr.exceptions.TesseractConfigError as e:
+                logging.error(f"Tesseract config error processing file {file}: {e}")
+            except Exception as e:
+                logging.error(f"Error processing file {file}: {e}")
+
+if __name__ == "__main__":
+    main()

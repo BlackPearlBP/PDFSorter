@@ -5,7 +5,7 @@ import pdfplumber
 import pandas as pd
 from pathlib import Path
 
-PDF_DIR = r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBPE"
+PDF_DIR = r"C:\Users\OLB5JVL\Downloads\Keep True - RBPE\KP - RBPE"
 RESULTS_DIR = r"results"
 CONVERTED_DIR = r"converted_pdfs"
 
