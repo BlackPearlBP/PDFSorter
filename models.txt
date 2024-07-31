@@ -1,0 +1,24 @@
+F, E, A, V = fixed letters as is
+X = numbers
+Y = random letters
+
+
+FXXX - XXXXXXXX
+FYXX - XXXXXXX
+FYXX - XXXXXXXX
+FXXX_XXXXXXXX
+FXXX   N° XXXXXXXX
+FXXX-XXXXXX
+FXXX-XXXXXXX
+FXXX-XXXXX
+EXXX-XXX
+EXXX-XXXX
+Número: XXXXXX
+Nro. FXXX-XXXXXXXX
+XXX-XXXXXXX
+Invoice -> first numbers on the next line
+Serie | Numero -> on the next line, using these models: -> AXXXXX
+FXXXXXXX
+No. XXXXXX-XXXXXXXXX
+No. XXX-XXX-XXXXXXXXX
+No = V-XXXXXX
