@@ -285,6 +285,58 @@ def search_order(file_path):
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
 
+def search_tax(file_path):
+    try:
+        df = pd.read_excel(file_path)
+
+        patterns = [
+            r'Impuesto',
+            r'Tax',
+            r'tax',
+            r'I.G.V.',
+            r'IGV 18%',
+            r'IGV \( %\):',
+            r'IGV \( %\) :',
+            r'IGV 18% USD',
+            r'NET AMOUNTS VAT AMOUNTS',
+            r'IGV : S/',
+            r'I.G.V. 18%',
+            r'TOTAL IGV',
+            r'Sumatoria IGV',
+            r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',
+            r'IGV 18.00% 1 PEN',
+            r'IGV:'
+        ]
+
+        values = []
+        for text in df[0]:
+            for pattern in patterns:
+                match = re.search(pattern, str(text))
+                if match:
+                    if pattern == r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL':
+                        next_row = df.iloc[df.index.get_loc(match.start()) + 1][0]
+                        value = re.search(r'([0-9.,]+)', str(next_row))
+                    elif pattern == r'NET AMOUNTS VAT AMOUNTS':
+                        value = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                    elif pattern == r'IGV 18.00% 1 PEN':
+                        match = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                        if match:
+                            value = match
+                    else:
+                        value = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                    if value:
+                        value_str = value.group(0).replace('.', '').replace(',', '.')
+                        values.append(float(value_str))
+                    else:
+                        value = "No tax"
+                        values.append(value)
+
+        return values
+
+    except Exception as e:
+        print(f"Error processing file: {file_path} - {str(e)}")
+    return None
+
 #OK
 def search_reference(file_path):
     try:
@@ -399,9 +451,11 @@ for root, _, files in os.walk(RESULTS_DIR):
             country = search_country(file_path)
             reference = search_reference(file_path)
             print(name)
-            print(reference)
+            #print(reference)
             idNumbers = find_data(country, file_path)
             #order = search_order(file_path)
+            tax = search_tax(file_path)
+            print(tax)
             currency = search_currency(file_path)
             date = search_dates(file_path)
             important_data = [name, date, country, idNumbers, currency]
