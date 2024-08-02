@@ -145,7 +145,7 @@ def search_cuit_argentina(file_path):
     return None
 
 #WIP
-def search_amounts(file_path):
+def search_amounts(file_path): # Needs rework
     try:
         df = pd.read_excel(file_path)
         searchfor = ['TOTAL','SUBTOTAL','Gravada','GRAVADA','Total','Subtotal']
@@ -254,12 +254,16 @@ def search_currency(file_path):
             'Dólares Americanos': 'USD',
             'Dolar': 'USD',
             'Peso Uruguayo': 'UYU',
-            '$': 'USD',
+            '$': 'Ambiguous/multiple values, manual search is recommended',
             'Gs': 'PYG',
             'Guarani': 'PYG',
             'GS': 'PYG',
             'US$': 'USD',
-            'Dollar': 'USD'
+            'Dollar': 'USD',
+            'PESOS': 'ARS',
+            'ARS': 'ARS',
+            'AR$': 'ARS',
+            'GUARANÍES': 'PYG'
         }
 
         result = ''
@@ -274,17 +278,47 @@ def search_currency(file_path):
         return ''
 
 #WIP
-def search_order(file_path):
+def search_order(file_path): # Not working properly
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['Orden','PO','Order']
-        foundinfo = df[df[0].str.contains('|'.join(searchfor))]
-        order = foundinfo[0].str.extract(r'([0-9-/]+)',expand=False)
-        return order
+
+        patterns = [
+            r'Orden',
+            r'PO',
+            r'Order',
+            r'PO',
+            r'OC NRO',
+            r'OC',
+            r'Nro de Orden de compra',
+            r'ORDEN DE COMPRA',
+            r'OC\(PO {10}\)',
+            r'Pedido',
+            r'ORDCOMPRA',
+            r'PED',
+            r'PED:',
+            r'Orden de Compra:',
+            r'Nro. Orden',
+            ]
+        
+        orders = []
+        for text in df[0]:
+            for pattern in patterns:
+                match = re.search(pattern, str(text))
+                if match:
+                    # Extract the order number from the text
+                    order_match = re.search(r'\d{4,}', str(text[match.end():]))
+                    if order_match:
+                        orders.append(order_match.group())
+
+        if orders:
+            return orders
+        else:
+            return "Order number not found, manual search is recommended"
     except Exception as e:
-        print(f"Error processing file: {file_path} - {str(e)}")
+        raise ValueError(f"Error processing file: {file_path} - {str(e)}")
     return None
 
+#OK
 def search_tax(file_path):
     try:
         df = pd.read_excel(file_path)
@@ -295,6 +329,8 @@ def search_tax(file_path):
             r'tax',
             r'I.G.V.',
             r'IGV 18%',
+            r'IGV $',
+            r'Igv $',
             r'IGV \( %\):',
             r'IGV \( %\) :',
             r'IGV 18% USD',
@@ -302,10 +338,34 @@ def search_tax(file_path):
             r'IGV : S/',
             r'I.G.V. 18%',
             r'TOTAL IGV',
+            r'TOTAL IGV USD',
+            r'Total IGV USD',
             r'Sumatoria IGV',
             r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',
             r'IGV 18.00% 1 PEN',
-            r'IGV:'
+            r'IGV:',
+            r'IVA',
+            r'IVA Resp. insc. 21%',
+            r'I.V.A. INSC.% 21',
+            r'IVA.INSC.21.00%',
+            r'IVA 21%',
+            r'IVA 21,00',
+            r'Iva Insc. 21,00%',
+            r'TOTAL IVA',
+            r'IVA:',
+            r'10%',
+            r'ITBMS\(7%\)',
+            r'ITBMS',
+            r'Total Impuesto',
+            r'Total Impuestos',
+            r'Impuestos',
+            r'IVA 12%',
+            r'I.G.V. 18.00%',
+            r'IVA: 12%',
+            r'I.V.A',
+            r'Iva',
+            r'Total iva\(22%\)',
+            r'TOTAL IGV \(18%\) S\/'
         ]
 
         values = []
@@ -319,14 +379,17 @@ def search_tax(file_path):
                     elif pattern == r'NET AMOUNTS VAT AMOUNTS':
                         value = re.search(r'([0-9.,]+)', str(text[match.end():]))
                     elif pattern == r'IGV 18.00% 1 PEN':
-                        match = re.search(r'([0-9.,]+)', str(text[match.end():]))
-                        if match:
-                            value = match
+                        matches = re.findall(r'([0-9.,]+)', str(text[match.end():]))
+                        if len(matches) > 1:
+                            value = matches[1]
+                        else:
+                            value = "No tax"
                     else:
                         value = re.search(r'([0-9.,]+)', str(text[match.end():]))
                     if value:
-                        value_str = value.group(0).replace('.', '').replace(',', '.')
-                        values.append(float(value_str))
+                        value_str = value.group(0).replace('.', '.').replace(',', '')
+                        if value_str not in ['18','18.0','18,0','18.0']:
+                            values.append(float(value_str))
                     else:
                         value = "No tax"
                         values.append(value)
@@ -379,7 +442,17 @@ def search_reference(file_path):
             r'F\d{3} Nº \d{8}', # FXXX Nº XXXXXXXX
             r'F\d{3} \d{8}', # FXXX XXXXXXXX
             r'\d{6} \d{2}[/]', # XXXXXX XX/
-            r'FAC\d{1}-\d{8}' #YYY-XXXXXXXX 
+            r'FAC\d{1}-\d{8}', #YYY-XXXXXXXX
+            r'FACTURA N° \d{6}', #FACTURA N° XXXXXX
+            r'Número: \d{10}', #Número: XXXXXXXXXX
+            r'\d{3}-\d{3}-\d{7}', #XXX-XXX-XXXXXXX
+            r'No. Factura \d{4} - \d{8}', #No. Factura XXXX - XXXXXXXX
+            r'\d{4}-\d{8}', #XXXX-XXXXXXXX
+            r'N° A-\d{4}-\d{8}', #A-XXXX-XXXXXXXX
+            r'N° A-\d{5}-\d{8}', #AXXXXX-XXXXXXXX
+            r'Punto de Venta: \d{5} Comp. Nro: \d{8}', #Punto de Venta: XXXX Comp. Nro. XXXXXXXX
+            r'Factura \d{4}A\d{8}', #Factura XXXXAXXXX
+            r'FACTURA \d{5} - \d{8}' #FACTURA XXXX - XXXXXXXX
         ]
         
         regex_patterns = [re.compile(pattern) for pattern in patterns]
@@ -450,16 +523,13 @@ for root, _, files in os.walk(RESULTS_DIR):
             name = file
             country = search_country(file_path)
             reference = search_reference(file_path)
-            print(name)
-            #print(reference)
             idNumbers = find_data(country, file_path)
-            #order = search_order(file_path)
+            order = search_order(file_path)
             tax = search_tax(file_path)
-            print(tax)
             currency = search_currency(file_path)
             date = search_dates(file_path)
-            important_data = [name, date, country, idNumbers, currency]
-            #print(important_data)
+            important_data = [name, date, country, idNumbers, currency, reference, order, tax]
+            print(important_data)
 
 #old def search_ruc_peru(file_path):
 #     try:
