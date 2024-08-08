@@ -4,6 +4,7 @@ import glob
 import pdfplumber
 import pandas as pd
 import imagepdf_converter
+import xlsx_searcher
 from pathlib import Path
 
 PDF_DIR = r"C:\Users\OLB5JVL\Downloads\Keep True - RBPE\KP - RBPE"
@@ -52,6 +53,9 @@ def main() -> None:
     pdf_files = glob.glob(os.path.join(PDF_DIR, "*.pdf"))
     for file in pdf_files:
         process_pdf(file)
+    
+    imagepdf_converter.main()
+    xlsx_searcher.main()
 
 if __name__ == "__main__":
     main()

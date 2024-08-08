@@ -1,11 +1,14 @@
 import pandas as pd
 from datetime import datetime
+import logging
+import pathlib
 import numpy as np
 import re
 import os
 
 # DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
 RESULTS_DIR = r"results"
+CSV_FILES = r"csv files"
 
 # BOSCH'S LEGAL ENTITY REGISTER NUMBERS ARE INSIDE THE FUNCTIONS THAT USE IT
 
@@ -318,7 +321,7 @@ def search_currency(file_path):
         print(f"Error processing file: {file_path} - {str(e)}")
         return ''
 
-#WIP
+#OK
 def search_order(file_path): # Not working properly. Sometimes it returns dates or unrelated numbers (Needs fixing)
     try:
         df = pd.read_excel(file_path)
@@ -346,10 +349,11 @@ def search_order(file_path): # Not working properly. Sometimes it returns dates 
             for pattern in patterns:
                 match = re.search(pattern, str(text))
                 if match:
+                    if not (re.search(r'RUC.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'RUC\s*\d+', str(text), re.IGNORECASE)):
                     # Extract the order number from the text
-                    order_match = re.search(r'\d{5,}', str(text[match.end():]))
-                    if order_match:
-                        orders.append(order_match.group())
+                        order_match = re.search(r'\d{5,}', str(text[match.end():]))
+                        if order_match:
+                            orders.append(order_match.group())
 
             # Remove repeated order numbers
             orders = list(set(orders))
@@ -495,10 +499,10 @@ def search_reference(file_path):
             r'N° A-\d{5}-\d{8}', #AXXXXX-XXXXXXXX
             r'Punto de Venta: \d{5} Comp. Nro: \d{8}', #Punto de Venta: XXXX Comp. Nro. XXXXXXXX
             r'Factura \d{4}A\d{8}', #Factura XXXXAXXXX
-            r'FACTURA \d{5} - \d{8}' #FACTURA XXXX - XXXXXXXX
+            r'FACTURA \d{5} - \d{8}', #FACTURA XXXX - XXXXXXXX
             r'N° \d{3}-\d{3}-\d{7}[/]SUNAT' #N° XXX-XXX-XXXXXXX/SUNAT
         ]
-        
+
         regex_patterns = [re.compile(pattern) for pattern in patterns]
         
         matches = []
@@ -507,13 +511,13 @@ def search_reference(file_path):
             for pattern in regex_patterns:
                 match = pattern.search(str(text))
                 if match:
-                    if match.group() == 'Invoice Date Customer Supplier':
+                    if (pattern.pattern == r'N° \d{3}-\d{3}-\d{7}[/]SUNAT' or re.search(r'\bAutorizado mediante\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bCta.Cte\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bBANCO\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bDerechos\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bBCP\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bMon\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bDAM\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bSUNAT\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bTEXTOS/\b.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'\bEmisor electrónico\b.*' + re.escape(match.group()), str(text), re.IGNORECASE)):
+                        continue
+                    elif match.group() == 'Invoice Date Customer Supplier':
                         invoice_index = index
                     else:
-                        if pattern.pattern == r'\d{6} \d{2}[/]':
+                        if pattern.pattern == r'\d{6} \d{2}[/]': # Extract the  first 6 numbers, as the last two are unrelated
                             matches.append(match.group()[:6])
-                        elif pattern.pattern == r'N° \d{3}-\d{3}-\d{7}[/]SUNAT': # NECESSITA AJUSTE
-                            matches.remove(match)
                         else:
                             matches.append(match.group())
             if invoice_index is not None and index == invoice_index + 1:
@@ -560,6 +564,19 @@ def find_data(country, file_path):
         case _:
             return "Country not found"
 
+#WIP
+def convert_to_csv(name: str,important_data: list) -> None:
+
+    file_name = os.path.splitext(os.path.basename(name))[0]
+    suffix = ".csv"
+    output = pathlib.Path(CSV_FILES).joinpath(file_name).with_suffix(suffix)
+
+    if not os.path.exists(CSV_FILES):
+        os.makedirs(CSV_FILES)
+
+    df = pd.DataFrame([item] for item in important_data)
+    df.to_excel(output)
+
 # For every file present at the directory (independent of the OS), search the ones that are .xslx
 for root, _, files in os.walk(RESULTS_DIR): 
     for file in files:
@@ -574,5 +591,6 @@ for root, _, files in os.walk(RESULTS_DIR):
             tax = search_tax(file_path) # Searches for its tax cost
             currency = search_currency(file_path) # Searches for the currency used
             date = search_dates(file_path) # Searches for its issue date
-            important_data = [name, date, country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
-            print(important_data)
+            important_data = [name,str(date), country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
+            print(important_data, name)
+            convert_to_csv(name, important_data)
