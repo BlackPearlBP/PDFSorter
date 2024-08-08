@@ -38,7 +38,7 @@ def perform_ocr(pdf_to_convert_path, file_name) -> None:
     for i in range(len(to_convert)):
         page = to_convert[i]
         image = page.render(scale=4).to_pil()
-        image.save(f"converted_pdfs\{file_name}.jpg")
+        image.save(f"\\converted_pdfs\\{file_name}.jpg")
         print("Converted file")
 
 def convert_to_excel(file: str, extracted_lines: list) -> None:
@@ -52,7 +52,6 @@ def main() -> None:
     pdf_files = glob.glob(os.path.join(PDF_DIR, "*.pdf"))
     for file in pdf_files:
         process_pdf(file)
-        imagepdf_converter()
 
 if __name__ == "__main__":
     main()

@@ -4,33 +4,53 @@ import numpy as np
 import re
 import os
 
+# DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
 RESULTS_DIR = r"results"
+
+# BOSCH'S LEGAL ENTITY REGISTER NUMBERS ARE INSIDE THE FUNCTIONS THAT USE IT
+
+# ALL BOSCH'S LATIN AMERICA LEGAL ENTITY NUMBERS:
+'''
+    20524506166 - PERU
+    80097300-3 - PARAGUAY
+    0992862467001 - ECUADOR
+    217706890016 - URUGUAY
+    30677423141 - ARGENTINA
+    30-67742314-1 - ARGENTINA ALT
+    155607295-2-2015 - PANAMA
+'''
 
 #OK
 def search_ruc_peru(file_path):
+    
     try:
-        df = pd.read_excel(file_path)
-        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
-        foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
-        if df[0].isnull().any():
+        # RUC PERU
+        RUC_PE = "20524506166"
+
+        df = pd.read_excel(file_path) # Opens file
+        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº'] # Patterns to be found
+        foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)] # search possible matches and put them in a list (na=False ignores missing values)
+        if df[0].isnull().any(): # If the the list is empty, the code returns a warning message
             print("Warning: missing values found in column!")
         
-        ruc = foundinfo[0].str.extract(r'([0-9-]+)', expand=False)
+        ruc = foundinfo[0].str.extract(r'([0-9-]+)', expand=False) # extracts only the information specified inside the brackets (numbers from 0-9 and hyphens) 
 
-        ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
+        ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False) # searches if the match has the parameter EIN (american standard)
 
-        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 9 or len(x) == 11 else None)
+        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 9 or len(x) == 11 else None) # applies the mask 9 for private limited companies and 11 for legal entities
 
-        ruc = ruc.dropna()
+        ruc = ruc.dropna() # remove missing values if any of them passed through 
 
-        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == '20524506166' else 'RUC FORNECEDOR: ' + x)
-        return ruc.values.tolist()
+        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == RUC_PE else 'RUC FORNECEDOR: ' + x) # applies labels to differentiate between Bosch's Id and supplier's Id
+        return ruc.values.tolist() # return found values
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
 
 #OK
 def search_ruc_paraguay(file_path):
+    # RUC PARAGUAY
+    RUC_PY = "80097300-3"
     try:
         df = pd.read_excel(file_path)
         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
@@ -46,7 +66,7 @@ def search_ruc_paraguay(file_path):
 
         ruc = ruc.dropna()
 
-        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == '80097300-3' else 'RUC FORNECEDOR: ' + x)
+        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == RUC_PY else 'RUC FORNECEDOR: ' + x)
         return ruc.values.tolist()
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
@@ -54,6 +74,8 @@ def search_ruc_paraguay(file_path):
 
 #OK
 def search_rut_uruguay(file_path):
+    # RUT URUGUAY
+    RUT_UY = "217706890016"
     try:
         df = pd.read_excel(file_path)
         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
@@ -69,7 +91,7 @@ def search_rut_uruguay(file_path):
 
         rut = rut.dropna()
 
-        rut = rut.apply(lambda x: 'RUT BOSCH: ' + x if x == '217706890016' else 'RUT FORNECEDOR: ' + x)
+        rut = rut.apply(lambda x: 'RUT BOSCH: ' + x if x == RUT_UY else 'RUT FORNECEDOR: ' + x)
         return rut.values.tolist()
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
@@ -77,6 +99,8 @@ def search_rut_uruguay(file_path):
 
 #OK
 def search_rut_ecuador(file_path):
+    # RUT ECUADOR
+    RUT_EC = "0992862467001"
     try:
         df = pd.read_excel(file_path)
         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
@@ -92,7 +116,7 @@ def search_rut_ecuador(file_path):
 
         ruc = ruc.dropna()
 
-        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == '0992862467001' else 'RUC FORNECEDOR: ' + x)
+        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == RUT_EC else 'RUC FORNECEDOR: ' + x)
         return ruc.values.tolist()
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
@@ -100,6 +124,8 @@ def search_rut_ecuador(file_path):
 
 #OK
 def search_ruc_panama(file_path):
+    # RUC PANAMA
+    RUC_PC = "155607295-2-2015"
     try:
         df = pd.read_excel(file_path)
         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
@@ -115,7 +141,7 @@ def search_ruc_panama(file_path):
 
         ruc = ruc.dropna()
 
-        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == '155607295-2-2015' else 'RUC FORNECEDOR: ' + x)
+        ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == RUC_PC else 'RUC FORNECEDOR: ' + x)
         return ruc.values.tolist()
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
@@ -123,6 +149,9 @@ def search_ruc_panama(file_path):
 
 #OK
 def search_cuit_argentina(file_path):
+    # CUIT ARGENTINA
+    CUIT_BOSCH = "30677423141"
+    CUIT_BOSCH_ALT = "30-67742314-1"
     try:
         df = pd.read_excel(file_path)
         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
@@ -138,11 +167,12 @@ def search_cuit_argentina(file_path):
 
         cuit = cuit.dropna()
 
-        cuit = cuit.apply(lambda x: 'CUIT BOSCH: ' + x if x == '30677423141' or '30-67742314-1' else 'CUIT FORNECEDOR: ' + x)
+        cuit = cuit.apply(lambda x: 'CUIT BOSCH: ' + x if x == CUIT_BOSCH or CUIT_BOSCH_ALT else 'CUIT FORNECEDOR: ' + x)
         return cuit.values.tolist()
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
+
 
 #WIP
 def search_amounts(file_path): # Needs rework
@@ -160,28 +190,37 @@ def search_amounts(file_path): # Needs rework
 #OK
 def search_dates(file_path):
     try:
-        df = pd.read_excel(file_path)
-        searchfor = ['Fecha','FECHA','Date','DATE','EMISION','Emisión','EMISIÓN']
+        df = pd.read_excel(file_path) # Opens excel file
+        searchfor = ['Fecha','FECHA','Date','DATE','EMISION','Emisión','EMISIÓN', 'emisión'] # Pattens to be found
         
-        df = df.dropna(subset=[0])
+        df = df.dropna(subset=[0]) # Remove null values from the first column
         
-        foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
+        foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)] # Adds found values to a list containing every possible value
         
-        dates = []
+        dates = [] # list for the formatted dates
         for text in foundinfo[0]:
-            line_dates = re.findall(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-]\w{3}[-]\d{2,4}', str(text))
+            line_dates = re.findall(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-]\w{3}[-]\d{2,4}', str(text)) # regex patterns (explanation bellow)
+            '''
+                \d is for matches where the string contains numbers
+                {1,2} is for matches where the string contains 1 or 2 numbers
+                [/-] is for matches where the string contains a slash or a hyphen
+                \w is for matches where the string contains a word
+                
+                this way we can find dates in every format DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, DD-MONTH-YYYY (...)
+            '''
             for date in line_dates:
-                if 'llegada' not in text.lower():
+                if 'llegada' not in text.lower(): # The found dates should only be the Issue date. Expiration and arrival dates will be ignored
                     
-                    date_formats = ['%d/%m/%Y', '%d-%m-%Y', '%d-%m-%y', '%d/%m/%y', '%d-%b-%Y', '%d/%b/%Y']
+                    date_formats = ['%d/%m/%Y', '%d-%m-%Y', '%d-%m-%y', '%d/%m/%y', '%d-%b-%Y', '%d/%b/%Y'] # Supported date formats. Attention: no support for american format, needs validation for this
                     for date_format in date_formats:
                         try:
-                            date_obj = datetime.strptime(date, date_format)
-                            dates.append(date_obj)
+                            date_obj = datetime.strptime(date, date_format) # Creates a datetime object with the given date and format
+                            dates.append(date_obj) # Adds the found dates to the list
                             break
                         except ValueError:
                             pass
         
+        # To guarantee that the returned date is the Issue one, this snippet retrieves the earliest date possible from the list
         if dates:
             earliest_date = min(dates)
             return ["Document date: " + earliest_date.strftime('%d/%m/%Y')]
@@ -230,13 +269,14 @@ def search_currency(file_path):
     try:
         df = pd.read_excel(file_path)
         currencies = ['DOLARES', 'SOLES', 'DOLAR', 'Soles', 'Dolares', 'Dolar', 'DÓLARES', 'Dólares', 'DÓLAR', 'UYU', 'Peso Uruguayo', 'USD', '$', 'PYG', 'Gs', 'Guarani', 'GS', 'US$', 'Dollar', 'Dólares Americanos']
-        pattern = re.compile('|'.join(currencies), re.IGNORECASE)
+        pattern = re.compile('|'.join(currencies), re.IGNORECASE) # Creates patterns that wll be used for searching
 
-        df_str = df[0].astype(str).dropna()
+        df_str = df[0].astype(str).dropna() # Converts the row where the text was found to string and removes null values
 
-        foundinfo = df_str.apply(lambda x: pattern.search(x) if x else None)
-        matches = [match.group() for match in foundinfo if match]
+        foundinfo = df_str.apply(lambda x: pattern.search(x) if x else None) # Applies patterns and searches for them
+        matches = [match.group() for match in foundinfo if match] # List of matches
 
+        # How to catalog currency based on match input
         currency_map = {
             'SOLES': 'PEN',
             'DOLARES': 'USD',
@@ -266,11 +306,12 @@ def search_currency(file_path):
             'GUARANÍES': 'PYG'
         }
 
+        # For every match found, verify if the match is present on the currency map. If so, the result is returned
         result = ''
         for match in matches:
             if match in currency_map:
                 result = currency_map[match]
-                break
+                break # Invoices usually use only one currency, so after the first result there's no reason to continue searching
 
         return result
     except Exception as e:
@@ -278,7 +319,7 @@ def search_currency(file_path):
         return ''
 
 #WIP
-def search_order(file_path): # Not working properly
+def search_order(file_path): # Not working properly. Sometimes it returns dates or unrelated numbers (Needs fixing)
     try:
         df = pd.read_excel(file_path)
 
@@ -306,17 +347,19 @@ def search_order(file_path): # Not working properly
                 match = re.search(pattern, str(text))
                 if match:
                     # Extract the order number from the text
-                    order_match = re.search(r'\d{4,}', str(text[match.end():]))
+                    order_match = re.search(r'\d{5,}', str(text[match.end():]))
                     if order_match:
                         orders.append(order_match.group())
 
-        if orders:
-            return orders
+            # Remove repeated order numbers
+            orders = list(set(orders))
+
+            if orders:
+                return orders
         else:
             return "Order number not found, manual search is recommended"
     except Exception as e:
         raise ValueError(f"Error processing file: {file_path} - {str(e)}")
-    return None
 
 #OK
 def search_tax(file_path):
@@ -442,7 +485,7 @@ def search_reference(file_path):
             r'F\d{3} Nº \d{8}', # FXXX Nº XXXXXXXX
             r'F\d{3} \d{8}', # FXXX XXXXXXXX
             r'\d{6} \d{2}[/]', # XXXXXX XX/
-            r'FAC\d{1}-\d{8}', #YYY-XXXXXXXX
+            r'FAC\d{1}-\d{8}', #FACX-XXXXXXXX
             r'FACTURA N° \d{6}', #FACTURA N° XXXXXX
             r'Número: \d{10}', #Número: XXXXXXXXXX
             r'\d{3}-\d{3}-\d{7}', #XXX-XXX-XXXXXXX
@@ -453,6 +496,7 @@ def search_reference(file_path):
             r'Punto de Venta: \d{5} Comp. Nro: \d{8}', #Punto de Venta: XXXX Comp. Nro. XXXXXXXX
             r'Factura \d{4}A\d{8}', #Factura XXXXAXXXX
             r'FACTURA \d{5} - \d{8}' #FACTURA XXXX - XXXXXXXX
+            r'N° \d{3}-\d{3}-\d{7}[/]SUNAT' #N° XXX-XXX-XXXXXXX/SUNAT
         ]
         
         regex_patterns = [re.compile(pattern) for pattern in patterns]
@@ -466,8 +510,10 @@ def search_reference(file_path):
                     if match.group() == 'Invoice Date Customer Supplier':
                         invoice_index = index
                     else:
-                        if pattern.pattern == r'\d{6} \d{2}[/]': 
+                        if pattern.pattern == r'\d{6} \d{2}[/]':
                             matches.append(match.group()[:6])
+                        elif pattern.pattern == r'N° \d{3}-\d{3}-\d{7}[/]SUNAT': # NECESSITA AJUSTE
+                            matches.remove(match)
                         else:
                             matches.append(match.group())
             if invoice_index is not None and index == invoice_index + 1:
@@ -479,7 +525,7 @@ def search_reference(file_path):
         # Remove repeated matches
         matches = list(set(matches))
         
-        # Filter matches to keep only the longest match
+        # Filter matches to keep only the longest match (avoids the emergence of undesired numbers that may have the same pattern but are unrelated to the reference)
         if matches:
             max_len = max(len(match) for match in matches)
             matches = [match for match in matches if len(match) == max_len]
@@ -514,37 +560,19 @@ def find_data(country, file_path):
         case _:
             return "Country not found"
 
-
-for root, _, files in os.walk(RESULTS_DIR):
+# For every file present at the directory (independent of the OS), search the ones that are .xslx
+for root, _, files in os.walk(RESULTS_DIR): 
     for file in files:
         if file.endswith(".xlsx"):
-            file_path = os.path.join(root, file)
+            file_path = os.path.join(root, file) # Defines the path of the given file
 
-            name = file
-            country = search_country(file_path)
-            reference = search_reference(file_path)
-            idNumbers = find_data(country, file_path)
-            order = search_order(file_path)
-            tax = search_tax(file_path)
-            currency = search_currency(file_path)
-            date = search_dates(file_path)
-            important_data = [name, date, country, idNumbers, currency, reference, order, tax]
+            name = file # Name of the file, for manual search if needed
+            country = search_country(file_path) # Searches what country the invoice is from 
+            reference = search_reference(file_path) # Searches for its reference number 
+            idNumbers = find_data(country, file_path) # Searches for the Legal Entity Register Numbers (RUC, CUIT, RUT, EIN, CNPJ...) using the country's respective LERN patterns
+            order = search_order(file_path) # Searches for its order number, if given any
+            tax = search_tax(file_path) # Searches for its tax cost
+            currency = search_currency(file_path) # Searches for the currency used
+            date = search_dates(file_path) # Searches for its issue date
+            important_data = [name, date, country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
             print(important_data)
-
-#old def search_ruc_peru(file_path):
-#     try:
-#         df = pd.read_excel(file_path)
-#         searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
-#         foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
-#         if df[0].isnull().any():
-#             print("Warning: missing values found in column!")
-#         print(file_path)
-#         print(foundinfo)
-#         ruc = foundinfo[0].str.extract(r'([0-9-]+)', expand=False)
-#         ruc = ruc[ruc.str.len() == 11]
-        
-#         ruc = ruc.apply(lambda x: 'RUC BOSCH: ' + x if x == '20524506166' else 'RUC FORNECEDOR: ' + x if len(x) == 11 else x)
-#         return ruc.values.tolist()
-#     except Exception as e:
-#         print(f"Error processing file: {file_path} - {str(e)}")
-#     return None

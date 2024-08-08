@@ -1,0 +1,1 @@
+Fixed directory for converted pdfs (jpeg files will stay here)
