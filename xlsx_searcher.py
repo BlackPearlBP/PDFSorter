@@ -349,7 +349,7 @@ def search_order(file_path): # Not working properly. Sometimes it returns dates 
             for pattern in patterns:
                 match = re.search(pattern, str(text))
                 if match:
-                    if not (re.search(r'RUC.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'RUC\s*\d+', str(text), re.IGNORECASE)):
+                    if not (re.search(r'RUC.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'RUC\s*\d+', str(text), re.IGNORECASE) or re.search(r'R.U.C.\s*\d+', str(text), re.IGNORECASE) or re.search(r'BCP\s*\d+', str(text), re.IGNORECASE)):
                     # Extract the order number from the text
                         order_match = re.search(r'\d{5,}', str(text[match.end():]))
                         if order_match:
@@ -564,7 +564,7 @@ def find_data(country, file_path):
         case _:
             return "Country not found"
 
-#WIP
+#OK
 def convert_to_csv(name: str,important_data: list) -> None:
 
     file_name = os.path.splitext(os.path.basename(name))[0]
