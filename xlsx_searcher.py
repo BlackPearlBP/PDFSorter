@@ -1,6 +1,5 @@
 import pandas as pd
 from datetime import datetime
-import logging
 import pathlib
 import numpy as np
 import re
@@ -178,18 +177,23 @@ def search_cuit_argentina(file_path):
 
 
 #WIP
-def search_amounts(file_path): # Needs rework
+def search_amounts(file_path):
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['TOTAL','SUBTOTAL','Gravada','GRAVADA','Total','Subtotal']
-        foundinfo = df[df[0].str.contains('|'.join(searchfor))]
-        values = foundinfo[0].str.extract(r'([0-9-,.$]+)', expand=False)
+        patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/']
+        values = []
+        for text in df[0]:
+            match = re.search('|'.join(patterns), str(text))
+            if match:
+                value_match = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                if value_match:
+                    value_str = re.sub(r'[^\d\.]+', '', value_match.group(0))  # Remove everything except digits and dot
+                    value = float(value_str.replace('.', '.').replace(',', ''))  # Replace comma with dot and then convert to float
+                    values.append(value)
         return values
-        #print(values)
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
-
 #OK
 def search_dates(file_path):
     try:
@@ -203,14 +207,14 @@ def search_dates(file_path):
         dates = [] # list for the formatted dates
         for text in foundinfo[0]:
             line_dates = re.findall(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-]\w{3}[-]\d{2,4}', str(text)) # regex patterns (explanation bellow)
-            '''
-                \d is for matches where the string contains numbers
-                {1,2} is for matches where the string contains 1 or 2 numbers
-                [/-] is for matches where the string contains a slash or a hyphen
-                \w is for matches where the string contains a word
+            
+                #\d is for matches where the string contains numbers
+                #{1,2} is for matches where the string contains 1 or 2 numbers
+                #[/-] is for matches where the string contains a slash or a hyphen
+                #\w is for matches where the string contains a word
                 
-                this way we can find dates in every format DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, DD-MONTH-YYYY (...)
-            '''
+                #this way we can find dates in every format DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, DD-MONTH-YYYY (...)
+            
             for date in line_dates:
                 if 'llegada' not in text.lower(): # The found dates should only be the Issue date. Expiration and arrival dates will be ignored
                     
@@ -578,19 +582,26 @@ def convert_to_csv(name: str,important_data: list) -> None:
     df.to_excel(output)
 
 # For every file present at the directory (independent of the OS), search the ones that are .xslx
-for root, _, files in os.walk(RESULTS_DIR): 
-    for file in files:
-        if file.endswith(".xlsx"):
-            file_path = os.path.join(root, file) # Defines the path of the given file
+def main():
+    for root, _, files in os.walk(RESULTS_DIR): 
+        for file in files:
+            if file.endswith(".xlsx"):
+                file_path = os.path.join(root, file) # Defines the path of the given file
 
-            name = file # Name of the file, for manual search if needed
-            country = search_country(file_path) # Searches what country the invoice is from 
-            reference = search_reference(file_path) # Searches for its reference number 
-            idNumbers = find_data(country, file_path) # Searches for the Legal Entity Register Numbers (RUC, CUIT, RUT, EIN, CNPJ...) using the country's respective LERN patterns
-            order = search_order(file_path) # Searches for its order number, if given any
-            tax = search_tax(file_path) # Searches for its tax cost
-            currency = search_currency(file_path) # Searches for the currency used
-            date = search_dates(file_path) # Searches for its issue date
-            important_data = [name,str(date), country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
-            print(important_data, name)
-            convert_to_csv(name, important_data)
+                name = file # Name of the file, for manual search if needed
+                country = search_country(file_path) # Searches what country the invoice is from 
+                reference = search_reference(file_path) # Searches for its reference number 
+                idNumbers = find_data(country, file_path) # Searches for the Legal Entity Register Numbers (RUC, CUIT, RUT, EIN, CNPJ...) using the country's respective LERN patterns
+                order = search_order(file_path) # Searches for its order number, if given any
+                total = search_amounts(file_path)
+                tax = search_tax(file_path) # Searches for its tax cost
+                currency = search_currency(file_path) # Searches for the currency used
+                date = search_dates(file_path) # Searches for its issue date
+                important_data = [name,str(date), country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
+                #print(important_data, name)
+                #convert_to_csv(name, important_data)
+                print(name)
+                print(total)
+
+if __name__ == "__main__":
+    main()
