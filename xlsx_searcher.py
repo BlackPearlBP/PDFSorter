@@ -178,18 +178,62 @@ def search_cuit_argentina(file_path):
 
 #WIP
 def search_amounts(file_path):
+    """
+    Searches for total amount values in an Excel file.
+
+    Args:
+        file_path (str): The path to the Excel file to search.
+
+    Returns:
+        list[float]: A list of total amount values found in the file. If an error occurs, returns None.
+
+    Notes:
+        This function searches for specific patterns in the first column of the Excel file to identify total amount values.
+        It handles different number formats, including commas and dots as thousands separators or decimal separators.
+
+    Raises:
+        Exception: If an error occurs while processing the file.
+    """
     try:
         df = pd.read_excel(file_path)
-        patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/']
+        patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/',r'OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
         values = []
         for text in df[0]:
             match = re.search('|'.join(patterns), str(text))
             if match:
-                value_match = re.search(r'([0-9.,]+)', str(text[match.end():]))
-                if value_match:
-                    value_str = re.sub(r'[^\d\.]+', '', value_match.group(0))  # Remove everything except digits and dot
-                    value = float(value_str.replace('.', '.').replace(',', ''))  # Replace comma with dot and then convert to float
-                    values.append(value)
+                if match.group() in [r"Sub Total: % Tax: Sales Tax: Total Amount Due:", r"OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL"]:
+                    next_row_index = df.index.get_loc(match.start()) + 1
+                    if next_row_index < len(df):
+                        next_row = df.iloc[next_row_index][0]
+                        value_match = re.search(r'([0-9.,]+)', str(next_row))
+                        if value_match:
+                            value_str = value_match.group(0).replace('.', '.').replace(',', '')
+                            values.append(float(value_str))
+                else:
+                    value_match = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                    if value_match:
+                        value_str = value_match.group(0)
+                        if ',' in value_str and '.' in value_str:
+                            # Check if the comma is a thousands separator or a decimal separator
+                            if value_str.count(',') > value_str.count('.'):
+                                # Format X,XXX.XX
+                                value_str = value_str.replace(',', '.')
+                            else:
+                                # Format X.XXX,XX
+                                value_str = value_str.replace('.', '.')
+                                value_str = value_str.replace(',', '')
+                        elif ',' in value_str:
+                            # Format X,XXX.XX
+                            value_str = value_str.replace(',', '')
+                        elif '.' in value_str:
+                            # Format X.XXX,XX
+                            pass
+                        else:
+                            # No dot or comma, assume it's a valid number
+                            pass
+                        value_str = re.sub(r'[^\d\.]+', '', value_str)  # Remove everything except digits and dot
+                        value = float(value_str)
+                        values.append(value)
         return values
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
