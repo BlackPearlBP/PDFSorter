@@ -1,9 +1,12 @@
 import pandas as pd
 from datetime import datetime
 import pathlib
+import locale
 import numpy as np
 import re
 import os
+
+locale.setlocale(locale.LC_ALL, 'C')
 
 # DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
 RESULTS_DIR = r"results"
@@ -175,8 +178,40 @@ def search_cuit_argentina(file_path):
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
 
+#OLD (Older method, overcomplicated)
+""" def parse_monetary_value(value_str):
+    # Remove non-numeric characters, except for negative signs and decimal separators
+    value_str = re.sub(r'[^\\d\\.\\-,]+', '', value_str)
 
-#WIP
+    # Handle multiple dots or commas
+    if ',' in value_str and '.' in value_str:
+        # Check if the comma is a thousands separator or a decimal separator
+        if value_str.count(',') > value_str.count('.'):
+            # Format X,XXX.XX
+            value_str = value_str.replace(',', '')
+        else:
+            # Format X.XXX,XX
+            value_str = value_str.replace('.', '')
+            value_str = value_str.replace(',', '')
+    elif ',' in value_str:
+        # Format X,XXX.XX
+        value_str = value_str.replace(',', '')
+    elif '.' in value_str:
+        # Format X.XXX,XX
+        pass
+    else:
+        # No dot or comma, assume it's a valid number
+        pass
+
+    # Convert to float
+    value = float(value_str)
+    return value """
+
+#OK
+def parse_monetary_value(value_str):
+    return '{:,.2f}'.format(value_str)
+
+#OK-ISH (Can't catch specific patterns, needs rework)
 def search_amounts(file_path):
     """
     Searches for total amount values in an Excel file.
@@ -194,6 +229,50 @@ def search_amounts(file_path):
     Raises:
         Exception: If an error occurs while processing the file.
     """
+    try:
+        df = pd.read_excel(file_path)
+        patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/',r'OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
+        values = []
+        for text in df[0]:
+            match = re.search('|'.join(patterns), str(text))
+            if match:
+                if match.group() in [r"Sub Total: % Tax: Sales Tax: Total Amount Due:", r"OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL"]:
+                    next_row_index = df.index.get_loc(match.start()) + 1
+                    if next_row_index < len(df):
+                        next_row = df.iloc[next_row_index][0]
+                        value_match = re.search(r'([0-9.,]+)', str(next_row))
+                        if value_match:
+                            value_str = value_match.group(0).replace('.', '.').replace(',', '')
+                            values.append(float(value_str))
+                else:
+                    value_match = re.search(r'([0-9.,]+)', str.strip(text[match.end():]))
+                    if value_match:
+                        value_str = value_match.group(0).replace(',','').replace('.','.')
+                        value = parse_monetary_value(float(value_str))
+                        values.append(value)
+        return values
+    except Exception as e:
+        print(f"Error processing file: {file_path} - {str(e)}")
+    return None
+
+#OLD (Too complex and buggy)
+""" def search_amounts(file_path):
+    
+    Searches for total amount values in an Excel file.
+
+    Args:
+        file_path (str): The path to the Excel file to search.
+
+    Returns:
+        list[float]: A list of total amount values found in the file. If an error occurs, returns None.
+
+    Notes:
+        This function searches for specific patterns in the first column of the Excel file to identify total amount values.
+        It handles different number formats, including commas and dots as thousands separators or decimal separators.
+
+    Raises:
+        Exception: If an error occurs while processing the file.
+    
     try:
         df = pd.read_excel(file_path)
         patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/',r'OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
@@ -231,13 +310,14 @@ def search_amounts(file_path):
                         else:
                             # No dot or comma, assume it's a valid number
                             pass
-                        value_str = re.sub(r'[^\d\.]+', '', value_str)  # Remove everything except digits and dot
+                        value_str = re.sub(r'[^\\d\\.]+', '', value_str)  # Remove everything except digits and dot
                         value = float(value_str)
                         values.append(value)
         return values
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-    return None
+    return None """
+
 #OK
 def search_dates(file_path):
     try:
@@ -641,11 +721,8 @@ def main():
                 tax = search_tax(file_path) # Searches for its tax cost
                 currency = search_currency(file_path) # Searches for the currency used
                 date = search_dates(file_path) # Searches for its issue date
-                important_data = [name,str(date), country, idNumbers, currency, reference, order, tax] # Places every found information on a list that will be converted into a .CSV file later
-                #print(important_data, name)
-                #convert_to_csv(name, important_data)
-                print(name)
-                print(total)
+                important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax] # Places every found information on a list that will be converted into a .CSV file later
+                convert_to_csv(name, important_data)
 
 if __name__ == "__main__":
     main()
