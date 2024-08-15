@@ -3,6 +3,7 @@ from datetime import datetime
 import pathlib
 import locale
 import numpy as np
+import openpyxl
 import re
 import os
 
@@ -230,30 +231,47 @@ def search_amounts(file_path):
         Exception: If an error occurs while processing the file.
     """
     try:
-        df = pd.read_excel(file_path)
-        patterns = ['TOTAL','Total','Importe Total','TOTAL S/','TOTAL. S/',r'OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL','IMPORTE TOTAL S/','TOTAL DOCUMENTO US$','Importe total:','Importe Total USD','TOTAL VENTA US$', 'TOTAL: PEN','Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
+        df = pd.read_excel(file_path, engine="openpyxl")
+        patterns = [r'TOTAL\. S/',r'TOTAL\.',r'Importe Total: US$',r'TOTAL',r'TOTAL US$',r'Importe Total:',r'IMPORTE TOTAL: US$',r'Total',r'Importe Total',r'TOTAL S/',r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',r'IMPORTE TOTAL S/',r'TOTAL DOCUMENTO US$',r'Importe total:',r'Importe Total USD',r'TOTAL VENTA US$',r'TOTAL: PEN',r'Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
         values = []
         for text in df[0]:
             match = re.search('|'.join(patterns), str(text))
             if match:
-                if match.group() in [r"Sub Total: % Tax: Sales Tax: Total Amount Due:", r"OP. EXONERADA OP. INAFECTA OP. GRAVADA TOT. DSCTO. I.S.C I.G.V. IMPORTE TOTAL"]:
-                    next_row_index = df.index.get_loc(match.start()) + 1
-                    if next_row_index < len(df):
-                        next_row = df.iloc[next_row_index][0]
-                        value_match = re.search(r'([0-9.,]+)', str(next_row))
-                        if value_match:
-                            value_str = value_match.group(0).replace('.', '.').replace(',', '')
-                            values.append(float(value_str))
+                if match.group() == r'Sub Total: % Tax: Sales Tax: Total Amount Due:':
+                    next_row = df.iloc[df.index.get_loc(match.end()) + 1][0]                 
+                    value_match = re.findall(r'\d{1,3}(?:,\d{3})*(?:\.\d+)?', str(next_row))
+                    if value_match:
+                        value_str = value_match.group(0).replace('.', '.').replace(',', '').replace('$','')
+                        value = parse_monetary_value(float(value_str))
+                        values.append(value)
+                elif match.group() == r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL':
+                    next_row = df.iloc[df.index.get_loc(match.start()) + 1][0]
+                    value_match = re.findall(r'\d{1,3}(?:,\d{3})*(?:\.\d+)?', str(next_row))
+                    if value_match:
+                        value_str = value_match[0].replace('.', '.').replace(',', '')
+                        values.append(float(value_str))
                 else:
                     value_match = re.search(r'([0-9.,]+)', str.strip(text[match.end():]))
                     if value_match:
-                        value_str = value_match.group(0).replace(',','').replace('.','.')
+                        value_str = value_match.group(0).replace(',','').replace('.','.').replace('$','')
                         value = parse_monetary_value(float(value_str))
                         values.append(value)
-        return values
+        if values:
+            real_total = max(values)
+            total_return = "Total: "+real_total 
+            return total_return
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
+
+'''
+if match.group() in [r"Sub Total: % Tax: Sales Tax: Total Amount Due:"]:
+                    next_row = df.iloc[df.index.get_loc(match.start()) + 1][0]
+                    value = re.search(r'([0-9.,]+)', str(next_row.iloc[-1:]))
+                    if value:
+                        value_str = value.group(0).replace('.', '.').replace(',', '')
+                        values.append(float(value_str))
+'''
 
 #OLD (Too complex and buggy)
 """ def search_amounts(file_path):
@@ -709,20 +727,23 @@ def convert_to_csv(name: str,important_data: list) -> None:
 def main():
     for root, _, files in os.walk(RESULTS_DIR): 
         for file in files:
-            if file.endswith(".xlsx"):
-                file_path = os.path.join(root, file) # Defines the path of the given file
+            if not file.startswith("~"):
+                if file.endswith(".xlsx"):
+                    file_path = os.path.join(root, file) # Defines the path of the given file
 
-                name = file # Name of the file, for manual search if needed
-                country = search_country(file_path) # Searches what country the invoice is from 
-                reference = search_reference(file_path) # Searches for its reference number 
-                idNumbers = find_data(country, file_path) # Searches for the Legal Entity Register Numbers (RUC, CUIT, RUT, EIN, CNPJ...) using the country's respective LERN patterns
-                order = search_order(file_path) # Searches for its order number, if given any
-                total = search_amounts(file_path)
-                tax = search_tax(file_path) # Searches for its tax cost
-                currency = search_currency(file_path) # Searches for the currency used
-                date = search_dates(file_path) # Searches for its issue date
-                important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax] # Places every found information on a list that will be converted into a .CSV file later
-                convert_to_csv(name, important_data)
+                    name = file # Name of the file, for manual search if needed
+                    country = search_country(file_path) # Searches what country the invoice is from 
+                    reference = search_reference(file_path) # Searches for its reference number 
+                    idNumbers = find_data(country, file_path) # Searches for the Legal Entity Register Numbers (RUC, CUIT, RUT, EIN, CNPJ...) using the country's respective LERN patterns
+                    order = search_order(file_path) # Searches for its order number, if given any
+                    total = search_amounts(file_path)
+                    tax = search_tax(file_path) # Searches for its tax cost
+                    currency = search_currency(file_path) # Searches for the currency used
+                    date = search_dates(file_path) # Searches for its issue date
+                    important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax] # Places every found information on a list that will be converted into a .CSV file later
+                    #convert_to_csv(name, important_data)
+                    print(important_data)
+
 
 if __name__ == "__main__":
     main()
