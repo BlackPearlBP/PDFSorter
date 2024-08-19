@@ -134,7 +134,7 @@ def search_ruc_panama(file_path):
     RUC_PC = "155607295-2-2015"
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
+        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº','Identificación Fiscal']
         foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
         if df[0].isnull().any():
             print("Warning: missing values found in column!")
@@ -143,7 +143,7 @@ def search_ruc_panama(file_path):
 
         ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
 
-        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 16 else None)
+        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 15 or 16 or 17 else None)
 
         ruc = ruc.dropna()
 
@@ -153,7 +153,7 @@ def search_ruc_panama(file_path):
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
 
-#OK
+#WIP
 def search_cuit_argentina(file_path):
     # CUIT ARGENTINA
     CUIT_BOSCH = "30677423141"
@@ -234,7 +234,7 @@ def search_amounts(file_path):
     """
     try:
         df = pd.read_excel(file_path, engine="openpyxl")
-        patterns = [r'TOTAL\. S/',r'TOTAL\.',r'Importe Total: US$',r'TOTAL',r'TOTAL US$',r'Importe Total:',r'IMPORTE TOTAL: US$',r'Total',r'Importe Total',r'TOTAL S/',r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',r'IMPORTE TOTAL S/',r'TOTAL DOCUMENTO US$',r'Importe total:',r'Importe Total USD',r'TOTAL VENTA US$',r'TOTAL: PEN',r'Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
+        patterns = [r'Importe Total : S/',r'TOTAL\. S/',r'TOTAL\.',r'Importe Total: US$',r'TOTAL',r'TOTAL US$',r'Importe Total:',r'IMPORTE TOTAL: US$',r'Total',r'Importe Total',r'TOTAL S/',r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',r'IMPORTE TOTAL S/',r'TOTAL DOCUMENTO US$',r'Importe total:',r'Importe Total USD',r'TOTAL VENTA US$',r'TOTAL: PEN',r'Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
         values = []
         for text in df[0]:
             match = re.search('|'.join(patterns), str(text))
@@ -397,7 +397,7 @@ def search_country(file_path):
                 results.append('PARAGUAY')
             elif country in ['URUGUAY', 'Uruguay', 'Montevideo', 'MONTEVIDEO']:
                 results.append('URUGUAY')
-            elif country in ['ECUADOR', 'Ecuador', 'Quito', 'QUITO']:
+            elif country in ['ECUADOR', 'Ecuador', 'Quito', 'QUITO','ECUABOSCH','Ecuabosch','ecuador','GUAYAS','Guayas']:
                 results.append('ECUADOR')
             elif country in ['PANAMA', 'Panama']:
                 results.append('PANAMA')
@@ -466,7 +466,7 @@ def search_currency(file_path):
         return result
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-        return ''
+        return 'Currency not found!'
 
 #OK
 def search_order(file_path): # Not working properly. Sometimes it returns dates or unrelated numbers (Needs fixing)
@@ -553,13 +553,14 @@ def search_tax(file_path):
             r'Total Impuesto',
             r'Total Impuestos',
             r'Impuestos',
-            r'IVA 12%',
+            r'IVA 12% ',
             r'I.G.V. 18.00%',
             r'IVA: 12%',
             r'I.V.A',
             r'Iva',
             r'Total iva\(22%\)',
             r'TOTAL IGV \(18%\) S\/'
+            r'Sin Impuestos'
         ]
 
         values = []
@@ -582,17 +583,21 @@ def search_tax(file_path):
                         value = re.search(r'([0-9.,]+)', str(text[match.end():]))
                     if value:
                         value_str = value.group(0).replace('.', '.').replace(',', '')
-                        if value_str not in ['18','18.0','18,0','18.0']:
-                            values.append(float(value_str))
+                        if value_str not in ['18','18.0','18,0','18.0','12.0','12,0','12','0','0.0','0,0']:
+                            values.append(f"Tax: {float(value_str)}")
                     else:
                         value = "No tax"
                         values.append(value)
-
-        return values
+        
+        list(set(values))
+        if values:
+            return f"Tax: {min(values)}"
+        else:
+            return "No tax"
 
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-    return None
+    return "Error"
 
 #OK
 def search_reference(file_path):
@@ -627,6 +632,7 @@ def search_reference(file_path):
             r'Série \| Número.*\n.*A\d{5}',  # Serie | Numero -> on the next line, using these models: -> AXXXXX
             r'F\d{7}',  # FXXXXXXX
             r'No. \d{6}-\d{8}',  # No. XXXXXX-XXXXXXXXX
+            r'No. \d{6}-\d{9}',  # No. XXXXXX-XXXXXXXXXX
             r'No. \d{3}-\d{3}-\d{8}',  # No. XXX-XXX-XXXXXXXXX
             r'V-\d{6}',  # No = V-XXXXXX
             r'No. \d{6} - \d{8}',  # No. XXXXXX - XXXXXXXXX
@@ -713,61 +719,60 @@ def find_data(country, file_path):
     if isinstance(country, str):
         country = country.split(',')
 
-    result = []
     for c in [x.strip() for x in country]:
         if c:
             match c.upper():
                 case 'PERU':
                     try:
-                        found_cuit = search_ruc_peru(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_ruc_peru(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case 'PARAGUAY':
                     try:
-                        found_cuit = search_ruc_paraguay(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_ruc_paraguay(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case 'URUGUAY':
                     try:
-                        found_cuit = search_rut_uruguay(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_rut_uruguay(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case 'ECUADOR':
                     try:
-                        found_cuit = search_rut_ecuador(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_rut_ecuador(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case 'PANAMA':
                     try:
-                        found_cuit = search_ruc_panama(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_ruc_panama(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case 'ARGENTINA':
                     try:
-                        found_cuit = search_cuit_argentina(file_path)
-                        result.extend(found_cuit)
+                        found_info = search_cuit_argentina(file_path)
+                        return found_info
                     except FileNotFoundError:
                         print(f"File not found for country: {c}")
                     except IOError:
                         print(f"Error reading file for country: {c}")
                 case _:
                     pass
-    return result
+    return None
 
 #OK
 def convert_to_csv(name: str,important_data: list) -> None:
@@ -797,12 +802,13 @@ def main():
                     order = search_order(file_path) # Searches for its order number, if given any
                     total = search_amounts(file_path)
                     tax = search_tax(file_path) # Searches for its tax cost
+                    if tax is not None:
+                        tax_info = tax
                     currency = search_currency(file_path) # Searches for the currency used
                     date = search_dates(file_path) # Searches for its issue date
-                    important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax] # Places every found information on a list that will be converted into a .CSV file later
+                    important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax_info] # Places every found information on a list that will be converted into a .CSV file later
                     convert_to_csv(name, important_data)
-                    #print(important_data)
-                    print(str(idNumbers))
+                    print(important_data)
 
 
 if __name__ == "__main__":

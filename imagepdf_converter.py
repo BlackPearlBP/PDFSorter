@@ -30,7 +30,7 @@ def delete_converted(CONVERTED_DIR):
         os.remove(os.path.join(CONVERTED_DIR, file))
 
 def main():
-    reader = easyocr.Reader(['en', 'es'])
+    reader = easyocr.Reader(['en', 'es'],detector="craft")
 
     for file in os.listdir(CONVERTED_DIR):
         if file.endswith(".jpg"):
@@ -39,7 +39,7 @@ def main():
                 if not os.path.isfile(file_path):
                     logging.warning(f"Skipping non-file {file_path}")
                     continue
-                text = reader.readtext(file_path, detail=0, width_ths=1.5, height_ths=1)
+                text = reader.readtext(file_path, detail=0, width_ths=1.5, height_ths=1, batch_size=10)
                 logging.info(f"Extracted text from {file}: {text}")
                 convert_to_excel(file, text)
             except easyocr.exceptions.TesseractConfigError as e:

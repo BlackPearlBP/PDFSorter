@@ -153,7 +153,7 @@ def search_ruc_panama(file_path):
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
 
-#OK
+#WIP
 def search_cuit_argentina(file_path):
     # CUIT ARGENTINA
     CUIT_BOSCH = "30677423141"

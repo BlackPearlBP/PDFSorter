@@ -6,8 +6,9 @@ import pandas as pd
 import imagepdf_converter
 import xlsx_searcher
 from pathlib import Path
+import pathlib
 
-PDF_DIR = r"C:\Users\OLB5JVL\Downloads\Keep True - RBPE\KP - RBPE"
+PDF_DIR = r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBEC"
 RESULTS_DIR = r"results"
 CONVERTED_DIR = r"converted_pdfs"
 
@@ -17,7 +18,7 @@ def process_pdf(file: str) -> None:
             if len(pdf.pages) > 0:
                 for page in pdf.pages:
                     text = page.extract_text()
-                    if text.isprintable():
+                    if not text.strip() or text.isprintable():
                         pdf_to_convert_path = os.path.abspath(file)
                         file_name = os.path.splitext(os.path.basename(file))[0]
                         perform_ocr(pdf_to_convert_path, file_name)
@@ -29,7 +30,7 @@ def process_pdf(file: str) -> None:
                         convert_to_excel(file, extracted_lines)
             else:
                 print(f"Skipping empty PDF file: {file}")
-    except pdfplumber.errors.PdfError as e:
+    except IOError as e:
         print(f"Error processing PDF file: {file} - {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -39,7 +40,9 @@ def perform_ocr(pdf_to_convert_path, file_name) -> None:
     for i in range(len(to_convert)):
         page = to_convert[i]
         image = page.render(scale=4).to_pil()
-        image.save(f"\\converted_pdfs\\{file_name}.jpg")
+        output_path = pathlib.Path(CONVERTED_DIR) / f"{file_name}_{i}.jpg"
+        output_path.parent.mkdir(parents=True,exist_ok=True)
+        image.save(output_path)
         print("Converted file")
 
 def convert_to_excel(file: str, extracted_lines: list) -> None:
