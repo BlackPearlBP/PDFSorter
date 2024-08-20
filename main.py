@@ -8,7 +8,7 @@ import xlsx_searcher
 from pathlib import Path
 import pathlib
 
-PDF_DIR = r"C:\Users\OLB5JVL\Downloads\KeepTrue outros\KeepTrue05032024\RBEC"
+PDF_DIR = r"C:\Users\OLB5JVL\Desktop\Para Apresentação"
 RESULTS_DIR = r"results"
 CONVERTED_DIR = r"converted_pdfs"
 

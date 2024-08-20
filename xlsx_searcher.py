@@ -1,13 +1,15 @@
+from decimal import Decimal
 import pandas as pd
 from datetime import datetime
 import pathlib
 import locale
 import numpy as np
+from babel.numbers import format_currency
 import openpyxl
 import re
 import os
 
-locale.setlocale(locale.LC_ALL, 'C')
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
 RESULTS_DIR = r"results"
@@ -68,7 +70,7 @@ def search_ruc_paraguay(file_path):
 
         ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
 
-        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 8 or len(x) == 11 else None)
+        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 8 or len(x) == 9 or 10 or 11 else None)
 
         ruc = ruc.dropna()
 
@@ -109,7 +111,7 @@ def search_rut_ecuador(file_path):
     RUT_EC = "0992862467001"
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
+        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº', 'RUC / CI:','R.U.C.']
         foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
         if df[0].isnull().any():
             print("Warning: missing values found in column!")
@@ -118,7 +120,7 @@ def search_rut_ecuador(file_path):
 
         ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
 
-        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 13 else None)
+        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 12 or 13 else None)
 
         ruc = ruc.dropna()
 
@@ -134,7 +136,7 @@ def search_ruc_panama(file_path):
     RUC_PC = "155607295-2-2015"
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº']
+        searchfor = ['RUC','R.U.C.','C.U.I.T.','CUIT','TIN','T.I.N.','CNPJ','EIN','E.I.N.', 'R.U.C. N°', 'R.U.C. Nº','Identificación Fiscal']
         foundinfo = df[df[0].str.contains('|'.join(searchfor), na=False)]
         if df[0].isnull().any():
             print("Warning: missing values found in column!")
@@ -143,7 +145,7 @@ def search_ruc_panama(file_path):
 
         ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
 
-        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 16 else None)
+        ruc = ruc.apply(lambda x: x if ein_mask.loc[ruc.index[ruc == x].tolist()[0]] and len(x) == 15 or 16 or 17 else None)
 
         ruc = ruc.dropna()
 
@@ -169,12 +171,14 @@ def search_cuit_argentina(file_path):
 
         ein_mask = foundinfo[0].str.contains('EIN|E.I.N.', na=False)
 
-        cuit = cuit.apply(lambda x: x if ein_mask.loc[cuit.index[cuit == x].tolist()[0]] and len(x) == 11 or 13 else None)
+        cuit = cuit.apply(lambda x: x if ein_mask.loc[cuit.index[cuit == x].tolist()[0]] and len(x) == 11 or 12 or 13 else None)
 
         cuit = cuit.dropna()
-
-        cuit = cuit.apply(lambda x: 'CUIT BOSCH: ' + x if x == CUIT_BOSCH or CUIT_BOSCH_ALT else 'CUIT FORNECEDOR: ' + x)
-        return cuit.values.tolist()
+        if not cuit.empty:
+            cuit = cuit.apply(lambda x: 'CUIT BOSCH: ' + x if x.replace('-', '') == CUIT_BOSCH.replace('-', '') or x.replace('-', '') == CUIT_BOSCH_ALT.replace('-', '') else 'CUIT FORNECEDOR: ' + x)
+            return cuit.values.tolist()
+        else:
+            return []
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
     return None
@@ -232,7 +236,7 @@ def search_amounts(file_path):
     """
     try:
         df = pd.read_excel(file_path, engine="openpyxl")
-        patterns = [r'TOTAL\. S/',r'TOTAL\.',r'Importe Total: US$',r'TOTAL',r'TOTAL US$',r'Importe Total:',r'IMPORTE TOTAL: US$',r'Total',r'Importe Total',r'TOTAL S/',r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',r'IMPORTE TOTAL S/',r'TOTAL DOCUMENTO US$',r'Importe total:',r'Importe Total USD',r'TOTAL VENTA US$',r'TOTAL: PEN',r'Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
+        patterns = [r'Importe Total : S/',r'TOTAL\. S/',r'TOTAL\.',r'Importe Total: US$',r'TOTAL',r'TOTAL US$',r'Importe Total:',r'IMPORTE TOTAL: US$',r'Total',r'Importe Total',r'TOTAL S/',r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL',r'IMPORTE TOTAL S/',r'TOTAL DOCUMENTO US$',r'Importe total:',r'Importe Total USD',r'TOTAL VENTA US$',r'TOTAL: PEN',r'Importe total de la venta S/',r'Sub Total: % Tax: Sales Tax: Total Amount Due:']
         values = []
         for text in df[0]:
             match = re.search('|'.join(patterns), str(text))
@@ -253,12 +257,14 @@ def search_amounts(file_path):
                 else:
                     value_match = re.search(r'([0-9.,]+)', str.strip(text[match.end():]))
                     if value_match:
-                        value_str = value_match.group(0).replace(',','').replace('.','.').replace('$','')
-                        value = parse_monetary_value(float(value_str))
-                        values.append(value)
+                        #value_str = value_match.group(0).replace(',','').replace('.','.').replace('$','')
+                        value_str = Decimal(locale.atof(value_match.group(0)))
+                        #value = parse_monetary_value(float(value_str))
+                        values.append(value_str)
+                        #values.append(value)
         if values:
             real_total = max(values)
-            total_return = "Total: "+real_total 
+            total_return = "Total: {:.2f}".format(real_total) 
             return total_return
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
@@ -383,35 +389,34 @@ def search_dates(file_path):
 def search_country(file_path):
     try:
         df = pd.read_excel(file_path)
-        searchfor = ['PERU', 'Peru', 'Paraguay', 'PARAGUAY', 'URUGUAY', 'Uruguay', 'LIMA', 'Lima', 'Asunción', 'ASUNCIÓN', 'Ciudad del Este', 'Guayas', 'Ecuador', 'ECUABOSCH', 'PANAMA', 'Panama','Montevideo','MONTEVIDEO','ARGENTINA','Argentina','Buenos Aires']
+        searchfor = ['PERU', 'Peru', 'peru', 'Paraguay','paraguay', 'PARAGUAY', 'URUGUAY', 'Uruguay', 'LIMA', 'Lima', 'Asunción', 'ASUNCIÓN', 'Ciudad del Este', 'Guayas', 'Ecuador', 'ECUABOSCH', 'PANAMA', 'Panama','Montevideo','MONTEVIDEO','ARGENTINA','Argentina','Buenos Aires','BUENOS AIRES','argentina']
         pattern = re.compile('|'.join(searchfor), re.IGNORECASE)
         foundinfo = df[0].apply(lambda x: pattern.search(str(x)))
         country_rows = [match.group() for match in foundinfo if match]
+        results = []
         for country in country_rows:
-            if country == 'LIMA' or 'Lima' or 'PERU' or 'Peru':
-                result = 'PERU'
-                return result
-            elif country == 'PARAGUAY' or 'Paraguay' or 'ASUNCIÓN' or 'Asunción':
-                result = 'PARAGUAY'
-                return result
-            elif country == 'URUGUAY' or 'Uruguay' or 'Montevideo' or 'MONTEVIDEO':
-                result = 'URUGUAY'
-                return result
-            elif country == 'ECUADOR' or 'Ecuador' or 'Quito' or 'QUITO':
-                result = 'ECUADOR'
-                return result
-            elif country == 'PANAMA' or 'Panama':
-                result = 'PANAMA'
-                return result
-            elif country == 'ARGENTINA' or 'Argentina' or 'Buenos Aires':
-                result = 'ARGENTINA'
-                return result
+            if country in ['LIMA', 'Lima', 'PERU', 'Peru', 'peru']:
+                results.append('PERU')
+            elif country in ['PARAGUAY', 'Paraguay', 'ASUNCIÓN', 'Asunción','paraguay']:
+                results.append('PARAGUAY')
+            elif country in ['URUGUAY', 'Uruguay', 'Montevideo', 'MONTEVIDEO']:
+                results.append('URUGUAY')
+            elif country in ['ECUADOR', 'Ecuador', 'Quito', 'QUITO','ECUABOSCH','Ecuabosch','ecuador','GUAYAS','Guayas']:
+                results.append('ECUADOR')
+            elif country in ['PANAMA', 'Panama']:
+                results.append('PANAMA')
+            elif country in ['ARGENTINA', 'Argentina', 'Buenos Aires','BUENOS AIRES','argentina']:
+                results.append('ARGENTINA')
             else:
-                print(f"Error while sorting country")
-        #print(country_rows)
+                print(f"Error while sorting country: {country}")
+        if not results:
+            print(f"No country found in file: {file_path}")
+        
+        results = list(set(results))
+        return results
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-    return None
+        return None
 
 #OK
 def search_currency(file_path):
@@ -461,11 +466,13 @@ def search_currency(file_path):
             if match in currency_map:
                 result = currency_map[match]
                 break # Invoices usually use only one currency, so after the first result there's no reason to continue searching
+            else:
+                result = 'Ambiguous/multiple values, manual search is recommended'
 
         return result
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-        return ''
+        return 'Currency not found!'
 
 #OK
 def search_order(file_path): # Not working properly. Sometimes it returns dates or unrelated numbers (Needs fixing)
@@ -495,7 +502,7 @@ def search_order(file_path): # Not working properly. Sometimes it returns dates 
             for pattern in patterns:
                 match = re.search(pattern, str(text))
                 if match:
-                    if not (re.search(r'RUC.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'RUC\s*\d+', str(text), re.IGNORECASE) or re.search(r'R.U.C.\s*\d+', str(text), re.IGNORECASE) or re.search(r'BCP\s*\d+', str(text), re.IGNORECASE)):
+                    if not (re.search(r'RUC.*' + re.escape(match.group()), str(text), re.IGNORECASE) or re.search(r'RUC\s*\d+', str(text), re.IGNORECASE) or re.search(r'R.U.C.\s*\d+', str(text), re.IGNORECASE) or re.search(r'RUC / CI:', str(text), re.IGNORECASE) or re.search(r'BCP\s*\d+', str(text), re.IGNORECASE)):
                     # Extract the order number from the text
                         order_match = re.search(r'\d{5,}', str(text[match.end():]))
                         if order_match:
@@ -505,7 +512,7 @@ def search_order(file_path): # Not working properly. Sometimes it returns dates 
             orders = list(set(orders))
 
             if orders:
-                return orders
+                return orders[0]
         else:
             return "Order number not found, manual search is recommended"
     except Exception as e:
@@ -559,39 +566,48 @@ def search_tax(file_path):
             r'Iva',
             r'Total iva\(22%\)',
             r'TOTAL IGV \(18%\) S\/'
+            r'Sin Impuestos'
+            r'IVA 12% :'
         ]
 
         values = []
         for text in df[0]:
             for pattern in patterns:
                 match = re.search(pattern, str(text))
-                if match:
-                    if pattern == r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL':
-                        next_row = df.iloc[df.index.get_loc(match.start()) + 1][0]
-                        value = re.search(r'([0-9.,]+)', str(next_row))
-                    elif pattern == r'NET AMOUNTS VAT AMOUNTS':
-                        value = re.search(r'([0-9.,]+)', str(text[match.end():]))
-                    elif pattern == r'IGV 18.00% 1 PEN':
-                        matches = re.findall(r'([0-9.,]+)', str(text[match.end():]))
-                        if len(matches) > 1:
-                            value = matches[1]
+                if pattern == r'Sin Impuestos':
+                    pass
+                else:
+                    if match:
+                        if pattern == r'OP\. EXONERADA OP\. INAFECTA OP\. GRAVADA TOT\. DSCTO\. I\.S\.C I\.G\.V\. IMPORTE TOTAL':
+                            next_row = df.iloc[df.index.get_loc(match.start()) + 1][0]
+                            value = re.search(r'([0-9.,]+)', str(next_row))
+                        elif pattern == r'NET AMOUNTS VAT AMOUNTS':
+                            value = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                        elif pattern == r'IGV 18.00% 1 PEN':
+                            matches = re.findall(r'([0-9.,]+)', str(text[match.end():]))
+                            if len(matches) > 1:
+                                value = matches[1]
+                            else:
+                                value = "No tax"
+                        else:
+                            value = re.search(r'([0-9.,]+)', str(text[match.end():]))
+                        if value:
+                            value_str = value.group(0).replace('.', '.').replace(',', '')
+                            if value_str not in ['18','18.0','18,0','18.0','12.0','12,0','12','0','0.0','0,0','0,00','0.00','1']:
+                                values.append(f"Tax: {float(value_str)}")
                         else:
                             value = "No tax"
-                    else:
-                        value = re.search(r'([0-9.,]+)', str(text[match.end():]))
-                    if value:
-                        value_str = value.group(0).replace('.', '.').replace(',', '')
-                        if value_str not in ['18','18.0','18,0','18.0']:
-                            values.append(float(value_str))
-                    else:
-                        value = "No tax"
-                        values.append(value)
-
-        return values
+                            values.append(value)
+        
+        if values:
+            numerical_values = [float(value.split(": ")[1]) for value in values]
+            return f"Tax: {min(numerical_values)}"
+        else:
+            return "No tax"
 
     except Exception as e:
         print(f"Error processing file: {file_path} - {str(e)}")
-    return None
+    return "Error"
 
 #OK
 def search_reference(file_path):
@@ -626,6 +642,7 @@ def search_reference(file_path):
             r'Série \| Número.*\n.*A\d{5}',  # Serie | Numero -> on the next line, using these models: -> AXXXXX
             r'F\d{7}',  # FXXXXXXX
             r'No. \d{6}-\d{8}',  # No. XXXXXX-XXXXXXXXX
+            r'No. \d{6}-\d{9}',  # No. XXXXXX-XXXXXXXXXX
             r'No. \d{3}-\d{3}-\d{8}',  # No. XXX-XXX-XXXXXXXXX
             r'V-\d{6}',  # No = V-XXXXXX
             r'No. \d{6} - \d{8}',  # No. XXXXXX - XXXXXXXXX
@@ -688,27 +705,84 @@ def search_reference(file_path):
 
 #OK
 def find_data(country, file_path):
-    match country:
-        case 'PERU':
-            list = search_ruc_peru(file_path)
-            return list
-        case 'PARAGUAY':
-            list = search_ruc_paraguay(file_path)
-            return list
-        case 'URUGUAY':
-            list = search_rut_uruguay(file_path)
-            return list
-        case 'ECUADOR':
-            list = search_rut_ecuador(file_path)
-            return list
-        case 'PANAMA':
-            list = search_ruc_panama(file_path)
-            return list
-        case 'ARGENTINA':
-            list = search_cuit_argentina(file_path)
-            return list
-        case _:
-            return "Country not found"
+    """
+    Searches for data in files associated with the specified countries.
+
+    Args:
+        country (str or list): A string or list of country names.
+        file_path (str): The path to the file containing the data.
+
+    Returns:
+        list: A list of data found in the files associated with the specified countries.
+
+    Raises:
+        ValueError: If country is not a string or a list of strings.
+        FileNotFoundError: If the file associated with a country does not exist.
+        IOError: If the file associated with a country cannot be read.
+    """
+
+    # Check if country is a string or a list of strings
+    if not isinstance(country, (str,type([]))):
+        raise ValueError("country must be a string or a list of strings")
+
+    # Convert string with multiple countries to a list
+    if isinstance(country, str):
+        country = country.split(',')
+
+    for c in [x.strip() for x in country]:
+        if c:
+            match c.upper():
+                case 'PERU':
+                    try:
+                        found_info = search_ruc_peru(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case 'PARAGUAY':
+                    try:
+                        found_info = search_ruc_paraguay(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case 'URUGUAY':
+                    try:
+                        found_info = search_rut_uruguay(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case 'ECUADOR':
+                    try:
+                        found_info = search_rut_ecuador(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case 'PANAMA':
+                    try:
+                        found_info = search_ruc_panama(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case 'ARGENTINA':
+                    try:
+                        found_info = search_cuit_argentina(file_path)
+                        return found_info
+                    except FileNotFoundError:
+                        print(f"File not found for country: {c}")
+                    except IOError:
+                        print(f"Error reading file for country: {c}")
+                case _:
+                    pass
+    return None
 
 #OK
 def convert_to_csv(name: str,important_data: list) -> None:
@@ -720,7 +794,7 @@ def convert_to_csv(name: str,important_data: list) -> None:
     if not os.path.exists(CSV_FILES):
         os.makedirs(CSV_FILES)
 
-    df = pd.DataFrame([item] for item in important_data)
+    df = pd.DataFrame(important_data).T # Transpose the list to create a DataFrame with the correct number of rows
     df.to_excel(output)
 
 # For every file present at the directory (independent of the OS), search the ones that are .xslx
@@ -738,10 +812,12 @@ def main():
                     order = search_order(file_path) # Searches for its order number, if given any
                     total = search_amounts(file_path)
                     tax = search_tax(file_path) # Searches for its tax cost
+                    if tax is not None:
+                        tax_info = tax
                     currency = search_currency(file_path) # Searches for the currency used
                     date = search_dates(file_path) # Searches for its issue date
-                    important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax] # Places every found information on a list that will be converted into a .CSV file later
-                    #convert_to_csv(name, important_data)
+                    important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax_info] # Places every found information on a list that will be converted into a .CSV file later
+                    convert_to_csv(name, important_data)
                     print(important_data)
 
 
