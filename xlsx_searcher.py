@@ -797,6 +797,10 @@ def convert_to_csv(name: str,important_data: list) -> None:
     df = pd.DataFrame(important_data).T # Transpose the list to create a DataFrame with the correct number of rows
     df.to_excel(output)
 
+def delete_converted(directory):
+    for file in os.listdir(directory):
+        os.remove(os.path.join(directory, file))
+
 # For every file present at the directory (independent of the OS), search the ones that are .xslx
 def main():
     for root, _, files in os.walk(RESULTS_DIR): 
@@ -818,7 +822,7 @@ def main():
                     date = search_dates(file_path) # Searches for its issue date
                     important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax_info] # Places every found information on a list that will be converted into a .CSV file later
                     convert_to_csv(name, important_data)
-                    print(important_data)
+    delete_converted(RESULTS_DIR)
 
 
 if __name__ == "__main__":
