@@ -25,9 +25,9 @@ def convert_to_excel(file: str, text: list) -> None:
     df = pd.DataFrame([item] for item in text)
     df.to_excel(output)
 
-def delete_converted(CONVERTED_DIR):
-    for file in os.listdir(CONVERTED_DIR):
-        os.remove(os.path.join(CONVERTED_DIR, file))
+def delete_converted(directory):
+    for file in os.listdir(directory):
+        os.remove(os.path.join(directory, file))
 
 def main():
     reader = easyocr.Reader(['en', 'es'],detector="craft")

@@ -3,9 +3,6 @@ import pandas as pd
 from datetime import datetime
 import pathlib
 import locale
-import numpy as np
-from babel.numbers import format_currency
-import openpyxl
 import re
 import os
 
@@ -13,7 +10,8 @@ locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
 RESULTS_DIR = r"results"
-CSV_FILES = r"csv files"
+directory1_path = None
+directory2_path = None
 
 # BOSCH'S LEGAL ENTITY REGISTER NUMBERS ARE INSIDE THE FUNCTIONS THAT USE IT
 
@@ -789,10 +787,10 @@ def convert_to_csv(name: str,important_data: list) -> None:
 
     file_name = os.path.splitext(os.path.basename(name))[0]
     suffix = ".csv"
-    output = pathlib.Path(CSV_FILES).joinpath(file_name).with_suffix(suffix)
+    output = pathlib.Path(directory2_path).joinpath(file_name).with_suffix(suffix)
 
-    if not os.path.exists(CSV_FILES):
-        os.makedirs(CSV_FILES)
+    #if not os.path.exists(CSV_FILES):
+    #    os.makedirs(CSV_FILES)
 
     df = pd.DataFrame(important_data).T # Transpose the list to create a DataFrame with the correct number of rows
     df.to_excel(output)

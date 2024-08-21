@@ -4,4 +4,5 @@ pdfplumber
 pandas
 pathlib
 openpyxl
-MSVC v142 – ferramentas de build do C++
+MSVC v142 - ferramentas de build do C++
+tk
