@@ -1,87 +1,48 @@
+import main
+import os
 from pathlib import *
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, filedialog
+from tkinter import Tk, Canvas, Entry, Button, PhotoImage, filedialog, messagebox
 import tkinter as tk
 import xlsx_searcher
-import imagepdf_converter
-import os
-import pypdfium2
-import glob
-import pdfplumber
-import pandas as pd
-import imagepdf_converter
-import xlsx_searcher
-import pathlib
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"assets\frame0")
-CONVERTED_DIR = r"converted_pdfs"
-EXCEL_DIR = r"results"
 
-def process_pdf(file: str) -> None:
-    try:
-        with pdfplumber.open(file) as pdf:
-            if len(pdf.pages) > 0:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if not text.strip() or text.isprintable():
-                        pdf_to_convert_path = os.path.abspath(file)
-                        file_name = os.path.splitext(os.path.basename(file))[0]
-                        perform_ocr(pdf_to_convert_path, file_name)
-                    else:
-                        extracted_lines = []
-                        for page in pdf.pages:
-                            text = page.extract_text(x_tolerance=2).split('\n')
-                            extracted_lines.extend(text)
-                        convert_to_excel(file, extracted_lines)
-            else:
-                print(f"Skipping empty PDF file: {file}")
-    except IOError as e:
-        print(f"Error processing PDF file: {file} - {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-def perform_ocr(pdf_to_convert_path, file_name) -> None:
-    to_convert = pypdfium2.PdfDocument(pdf_to_convert_path)
-    for i in range(len(to_convert)):
-        page = to_convert[i]
-        image = page.render(scale=4).to_pil()
-        output_path = pathlib.Path(CONVERTED_DIR) / f"{file_name}_{i}.jpg"
-        output_path.parent.mkdir(parents=True,exist_ok=True)
-        image.save(output_path)
-        print("Converted file")
-
-def convert_to_excel(file: str, extracted_lines: list) -> None:
-    file_name = os.path.splitext(os.path.basename(file))[0]
-    suffix = ".xlsx"
-    output = Path(EXCEL_DIR,file_name).with_suffix(suffix)
-    df = pd.DataFrame([item] for item in extracted_lines)
-    df.to_excel(output)
-
-def main() -> None:
-    pdf_files = glob.glob(os.path.join(xlsx_searcher.directory1_path, "*.pdf"))
-    for file in pdf_files:
-        process_pdf(file)
-    
-    imagepdf_converter.main()
-    xlsx_searcher.main()
-
-def chooseDir1():
-    xlsx_searcher.directory1_path = filedialog.askdirectory()
+def chooseInputDir():
+    main.directory1_path = filedialog.askdirectory()
     entry_1.configure(state='normal')
     entry_1.delete(0, tk.END)
-    entry_1.insert(tk.END, xlsx_searcher.directory1_path)
+    entry_1.insert(tk.END, main.directory1_path)
     entry_1.configure(state='disabled')
 
-def chooseDir2():
+def chooseOutputDir():
     xlsx_searcher.directory2_path = filedialog.askdirectory()
     entry_2.configure(state='normal')
     entry_2.delete(0, tk.END)
     entry_2.insert(tk.END, xlsx_searcher.directory2_path)
     entry_2.configure(state='disabled')
 
+def verifyDir():
+    if main.directory1_path is not None:
+        if os.path.exists(main.directory1_path):
+            if not os.listdir(main.directory1_path):
+                return "empty"
+            else:
+                return "ok"
+        else:
+            return "non-existent"
+    else:
+        return "non-existent"
     
 def startReading():
-    main()
+    dir_status = verifyDir()
+    if dir_status == "empty":
+        messagebox.showerror("Error", "Please select a directory that is not empty.")
+    elif dir_status == "ok":
+        main.main()
+        messagebox.showinfo("Done", "All PDFs have been converted, sorted and extracted as CSVs")
+    elif dir_status == "non-existent":
+        messagebox.showerror("Error","This directory does not exist or is not valid!")
     
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -91,7 +52,6 @@ window = Tk()
 window.geometry("700x550")
 window.configure(bg = "#FFFFFF")
 window.title("PDF Sorter")
-
 
 canvas = Canvas(
     window,
@@ -199,7 +159,7 @@ button_1 = Button(
     image=button_image_1,
     borderwidth=0,
     highlightthickness=0,
-    command= chooseDir1,
+    command= chooseInputDir,
     relief="flat"
 )
 button_1.place(
@@ -215,7 +175,7 @@ button_2 = Button(
     image=button_image_2,
     borderwidth=0,
     highlightthickness=0,
-    command=chooseDir2,
+    command=chooseOutputDir,
     relief="flat"
 )
 button_2.place(
@@ -239,15 +199,6 @@ button_3.place(
     y=424.0,
     width=170.0,
     height=32.0
-)
-
-canvas.create_text(
-    266.0,
-    530.0,
-    anchor="nw",
-    text="Visite o tutorial clicando aqui.",
-    fill="#000000",
-    font=("BoschOfficeSans Regular", 13 * -1)
 )
 window.resizable(False, False)
 window.mainloop()

@@ -9,8 +9,7 @@ import os
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # DIRECTORY WHERE THE CODE WILL FIND THE FILES FOR SEARCH
-RESULTS_DIR = r"results"
-directory1_path = None
+EXCEL_DIR = r"results"
 directory2_path = None
 
 # BOSCH'S LEGAL ENTITY REGISTER NUMBERS ARE INSIDE THE FUNCTIONS THAT USE IT
@@ -801,7 +800,7 @@ def delete_converted(directory):
 
 # For every file present at the directory (independent of the OS), search the ones that are .xslx
 def main():
-    for root, _, files in os.walk(RESULTS_DIR): 
+    for root, _, files in os.walk(EXCEL_DIR): 
         for file in files:
             if not file.startswith("~"):
                 if file.endswith(".xlsx"):
@@ -820,7 +819,7 @@ def main():
                     date = search_dates(file_path) # Searches for its issue date
                     important_data = [name,str(date), country, idNumbers, currency, reference, order, total, tax_info] # Places every found information on a list that will be converted into a .CSV file later
                     convert_to_csv(name, important_data)
-    delete_converted(RESULTS_DIR)
+    delete_converted(EXCEL_DIR)
 
 
 if __name__ == "__main__":
