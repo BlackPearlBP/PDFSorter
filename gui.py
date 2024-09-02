@@ -8,6 +8,7 @@ import xlsx_searcher
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"assets\frame0")
 
+# Configures the first entry of the front (input directory)
 def chooseInputDir():
     main.directory1_path = filedialog.askdirectory()
     entry_1.configure(state='normal')
@@ -15,6 +16,7 @@ def chooseInputDir():
     entry_1.insert(tk.END, main.directory1_path)
     entry_1.configure(state='disabled')
 
+# Configures the second entry of the front (output directory)
 def chooseOutputDir():
     xlsx_searcher.directory2_path = filedialog.askdirectory()
     entry_2.configure(state='normal')
@@ -22,6 +24,7 @@ def chooseOutputDir():
     entry_2.insert(tk.END, xlsx_searcher.directory2_path)
     entry_2.configure(state='disabled')
 
+# Verifies if the selected directories are valid
 def verifyDir():
     if main.directory1_path is not None:
         if os.path.exists(main.directory1_path):
@@ -33,7 +36,8 @@ def verifyDir():
             return "non-existent"
     else:
         return "non-existent"
-    
+
+# The main function, calls the verification and then proceeds accordingly
 def startReading():
     dir_status = verifyDir()
     if dir_status == "empty":
@@ -43,9 +47,14 @@ def startReading():
         messagebox.showinfo("Done", "All PDFs have been converted, sorted and extracted as CSVs")
     elif dir_status == "non-existent":
         messagebox.showerror("Error","This directory does not exist or is not valid!")
-    
+
+# This function calls the assets of the front (design)
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
+
+
+# Front-end of the project
+# Made with Figma and exported using Tkinter-Designer
 
 window = Tk()
 
